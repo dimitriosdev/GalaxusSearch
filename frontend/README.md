@@ -1,167 +1,129 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# Galaxus Frontend
 
-## Getting Started
+This is the Next.js frontend for the Galaxus Product Search application, built with React 19, TypeScript, and Apollo Client for GraphQL integration.
 
-First, run the development server:
+## Quick Start
+
+For the complete setup guide including backend and database services, see the main [README.md](../README.md) in the project root.
+
+### Frontend Only Setup
+
+If the backend and database services are already running:
 
 ```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
-```
-
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
-
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
-
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
-
-## Learn More
-
-To learn more about Next.js, take a look at the following resources:
-
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
-
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
-
-## Deploy on Vercel
-
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
-
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
-
-# Galaxus Frontend: Developer Quickstart
-
-This project is the Next.js frontend for the Galaxus stack. To run the full stack locally (frontend, backend, PostgreSQL, Elasticsearch):
-
----
-
-## 1. Prerequisites
-
-- [Docker Desktop](https://www.docker.com/products/docker-desktop/) installed and running
-- [.NET 9 SDK](https://dotnet.microsoft.com/en-us/download/dotnet/9.0) installed
-- [Node.js](https://nodejs.org/) (v18+) and npm installed
-
----
-
-## 2. Start Database & Search Services
-
-From the project root (`galaxus/`), run:
-
-```powershell
-docker compose up -d
-```
-
-This starts:
-
-- **PostgreSQL** (port 5432, user: `galaxus`, password: `galaxus`, db: `galaxus`)
-- **Elasticsearch** (port 9200)
-
----
-
-## 3. Backend API (.NET)
-
-In a new terminal:
-
-```powershell
-cd backend
- dotnet restore
- dotnet run
-```
-
-Backend runs on [http://localhost:5000](http://localhost:5000) (or as configured).
-
----
-
-## 4. Frontend (Next.js)
-
-In another terminal:
-
-```powershell
-cd frontend
+# Install dependencies
 npm install
+
+# Start development server
 npm run dev
 ```
 
-Frontend runs on [http://localhost:3000](http://localhost:3000).
+The frontend will be available at [http://localhost:3000](http://localhost:3000).
 
----
+## Features
 
-## 5. Stopping Services
+- **Real-time Product Search**: Debounced search with GraphQL integration
+- **Responsive Design**: Mobile-friendly interface with Tailwind CSS
+- **Dark/Light Mode**: Theme toggle with system preference detection
+- **Error Handling**: Comprehensive error boundaries and user feedback
+- **Performance Optimized**: Built with Next.js 15 and Turbopack
 
-To stop database and Elasticsearch:
+## Configuration
 
-```powershell
-docker compose down
+### Environment Variables
+
+Create `.env.local` for development:
+
+```env
+NEXT_PUBLIC_API_URL=http://localhost:5119
+NEXT_PUBLIC_ENVIRONMENT=development
+NEXT_PUBLIC_API_TIMEOUT=30000
+NEXT_PUBLIC_RETRY_ATTEMPTS=3
+NEXT_PUBLIC_RETRY_DELAY=1000
 ```
 
----
+### Backend Integration
 
-## 6. Useful URLs
+The frontend connects to the .NET GraphQL backend running on port 5119. Ensure the backend is running before starting the frontend.
 
-- Frontend: [http://localhost:3000](http://localhost:3000)
-- Backend API: [http://localhost:5000](http://localhost:5000)
-- PostgreSQL: `localhost:5432` (user: `galaxus`, password: `galaxus`)
-- Elasticsearch: [http://localhost:9200](http://localhost:9200)
+## Development
 
----
-
-## 7. Troubleshooting
-
-- Ensure Docker Desktop is running before starting services.
-- If ports are in use, stop other containers or change ports in `docker-compose.yml`.
-- For database connection errors, check credentials in your backend config.
-
----
-
-## 8. Project Structure
-
-- `backend/` - .NET API
-- `frontend/` - Next.js app
-- `docker-compose.yml` - PostgreSQL & Elasticsearch services
-
----
-
-# (Original Next.js README below)
-
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
-
-## Getting Started
-
-First, run the development server:
+### Available Scripts
 
 ```bash
+# Development server with hot reload
 npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
+
+# Production build
+npm run build
+
+# Start production server
+npm start
+
+# Run tests
+npm test
+
+# Run tests in watch mode
+npm run test:watch
+
+# Run tests with coverage
+npm run test:coverage
+
+# Linting
+npm run lint
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+### Project Structure
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+```
+src/
+├── app/                    # Next.js App Router pages
+├── components/             # React components
+│   ├── ProductItem.tsx     # Individual product display
+│   ├── ProductList.tsx     # Product grid/list
+│   ├── SearchForm.tsx      # Search input with filters
+│   └── ThemeToggle.tsx     # Dark/light mode toggle
+├── hooks/                  # Custom React hooks
+│   └── useProducts.ts      # Product search and state management
+├── types/                  # TypeScript type definitions
+└── utils/                  # Utility functions and monitoring
+```
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+## Testing
 
-## Learn More
+The project includes comprehensive test coverage:
 
-To learn more about Next.js, take a look at the following resources:
+- Component tests with React Testing Library
+- Hook tests for custom React hooks
+- Integration tests for GraphQL queries
+- Accessibility tests
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+## Deployment
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+For production deployment instructions, see [DEPLOYMENT.md](../DEPLOYMENT.md).
 
-## Deploy on Vercel
+### Vercel Deployment
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+The easiest way to deploy is using [Vercel](https://vercel.com/new):
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+1. Connect your GitHub repository
+2. Configure environment variables
+3. Deploy automatically on push
+
+---
+
+## Next.js Information
+
+This project was bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app) and uses:
+
+- **Next.js 15** with App Router
+- **React 19** with TypeScript
+- **Tailwind CSS** for styling
+- **Apollo Client** for GraphQL
+- **Jest** for testing
+
+### Learn More
+
+- [Next.js Documentation](https://nextjs.org/docs)
+- [Apollo Client Documentation](https://www.apollographql.com/docs/react/)
+- [Tailwind CSS Documentation](https://tailwindcss.com/docs)

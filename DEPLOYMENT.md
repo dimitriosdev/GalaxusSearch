@@ -106,11 +106,14 @@ Create `backend/appsettings.Production.json`:
 Create `frontend/.env.production`:
 
 ```env
-NEXT_PUBLIC_API_URL=https://your-api-domain.com
-NEXT_PUBLIC_GRAPHQL_ENDPOINT=https://your-api-domain.com/graphql
+NEXT_PUBLIC_API_URL=https://your-api-domain.com:5119
+NEXT_PUBLIC_GRAPHQL_ENDPOINT=https://your-api-domain.com:5119/graphql
 NEXT_PUBLIC_ENVIRONMENT=production
 NEXT_PUBLIC_MONITORING_ENABLED=true
 NEXT_PUBLIC_AUTH_ENABLED=false
+NEXT_PUBLIC_API_TIMEOUT=30000
+NEXT_PUBLIC_RETRY_ATTEMPTS=3
+NEXT_PUBLIC_RETRY_DELAY=1000
 ```
 
 ### Required Environment Variables
@@ -130,24 +133,32 @@ The application includes automated database migrations:
 
 ```bash
 # Using the API endpoints (development)
-curl -X POST http://localhost:5000/dev/migrate-and-seed
+curl -X POST http://localhost:5119/api/dev/migrate-and-seed
 
-# Or manually run SQL scripts
-psql -h localhost -U postgres -d galaxus_products -f backend/Database/Migrations/001_InitialSchema.sql
-psql -h localhost -U postgres -d galaxus_products -f backend/Database/Seeds/001_SampleProducts.sql
+# Or for production environments using direct DB access
+psql -h localhost -U postgres -d galaxus -f backend/Database/Migrations/001_InitialSchema.sql
+psql -h localhost -U postgres -d galaxus -f backend/Database/Seeds/001_SampleProducts.sql
+
+# Or use Docker to run init script directly
+docker exec -i postgres_container psql -U galaxus -d galaxus < init.sql
 ```
 
 ### 2. Database Schema
 
 The migration creates:
 
-- `products` table with full-text search indices
-- Performance-optimized indexes on category, brand, and price
-- Audit triggers for data tracking
+- `products` table with comprehensive product information
+- Full-text search indices for efficient text searching
+- Performance-optimized indexes on category, brand, and price fields
+- Support for 10,000+ sample products for testing
 
 ### 3. Sample Data
 
-Includes 30 sample products across multiple categories for testing.
+Includes 10,000+ sample products across multiple categories for comprehensive testing, including:
+
+- Electronics, clothing, home goods, books, and more
+- Realistic product names, descriptions, and pricing
+- Multiple brands and categories for search testing
 
 ## Health Checks
 
@@ -265,10 +276,11 @@ Content-Security-Policy: default-src 'self'
 
 ```bash
 # Check database connectivity
-docker exec -it postgres_container psql -U postgres -d galaxus_products -c "SELECT 1;"
+docker exec -it galaxus-postgres-1 psql -U galaxus -d galaxus -c "SELECT COUNT(*) FROM products;"
 
 # Verify connection string format
-# Correct: Host=localhost;Database=galaxus_products;Username=postgres;Password=password
+# Development: Host=localhost;Database=galaxus;Username=galaxus;Password=galaxus;Port=5432
+# Production: Use environment-specific credentials
 ```
 
 #### 2. Elasticsearch Connection Issues
@@ -285,12 +297,15 @@ curl http://localhost:9200/products/_search
 
 ```bash
 # Verify backend is running
-curl http://localhost:5000/health
+curl http://localhost:5119/health
 
-# Check GraphQL endpoint
-curl -X POST http://localhost:5000/graphql \
+# Test GraphQL endpoint
+curl -X POST http://localhost:5119/graphql \
   -H "Content-Type: application/json" \
   -d '{"query": "{ __schema { types { name } } }"}'
+
+# Test API endpoints
+curl -X POST http://localhost:5119/api/sync-elastic
 ```
 
 ### Performance Optimization

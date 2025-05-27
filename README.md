@@ -77,11 +77,12 @@ dotnet restore
 dotnet run
 ```
 
-The backend will start on [http://localhost:5000](http://localhost:5000) with:
+The backend will start on [http://localhost:5119](http://localhost:5119) with:
 
 - GraphQL endpoint at `/graphql`
 - Health check endpoint at `/health`
-- Swagger documentation (if enabled)
+- API endpoints at `/api/*`
+- Development utilities (migration, seeding)
 
 ### Step 4: Start the Frontend (Next.js)
 
@@ -113,13 +114,20 @@ After the backend is running, enable search functionality:
 **Option 1: Using PowerShell's Invoke-WebRequest (recommended)**
 
 ```powershell
-Invoke-WebRequest -Uri "http://localhost:5000/sync-elastic" -Method POST
+Invoke-WebRequest -Uri "http://localhost:5119/api/sync-elastic" -Method POST
 ```
 
 **Option 2: Using curl.exe directly**
 
 ```powershell
-curl.exe -X POST http://localhost:5000/sync-elastic
+curl.exe -X POST http://localhost:5119/api/sync-elastic
+```
+
+**Option 3: Initialize database first (if needed)**
+
+```powershell
+# Initialize database with sample data
+Invoke-WebRequest -Uri "http://localhost:5119/api/dev/migrate-and-seed" -Method POST
 ```
 
 This indexes all products from PostgreSQL into Elasticsearch for enhanced search capabilities.
@@ -177,6 +185,7 @@ For full system testing (requires bash/WSL on Windows):
 - **Serilog** for structured logging
 - **FluentValidation** for input validation
 - **Polly** for resilience patterns
+- **Development endpoints** for database migration and seeding
 
 ### Frontend Features
 
@@ -186,6 +195,7 @@ For full system testing (requires bash/WSL on Windows):
 - **Tailwind CSS** for styling
 - **Jest** and Testing Library for testing
 - **ESLint** for code quality
+- **Real-time search** with debouncing and error handling
 
 ---
 
@@ -199,10 +209,11 @@ For full system testing (requires bash/WSL on Windows):
 
 ### Backend API
 
-- **Base URL**: [http://localhost:5000](http://localhost:5000)
-- **GraphQL Playground**: [http://localhost:5000/graphql](http://localhost:5000/graphql)
-- **Health Check**: [http://localhost:5000/health](http://localhost:5000/health)
-- **Sync Endpoint**: `POST http://localhost:5000/sync-elastic`
+- **Base URL**: [http://localhost:5119](http://localhost:5119)
+- **GraphQL Playground**: [http://localhost:5119/graphql](http://localhost:5119/graphql)
+- **Health Check**: [http://localhost:5119/health](http://localhost:5119/health)
+- **Sync Endpoint**: `POST http://localhost:5119/api/sync-elastic`
+- **Dev Migration**: `POST http://localhost:5119/api/dev/migrate-and-seed`
 
 ### Database Services
 
@@ -258,7 +269,10 @@ docker compose restart
 
 ```powershell
 # Check if backend is running
-Invoke-WebRequest -Uri "http://localhost:5000/health" -Method GET
+Invoke-WebRequest -Uri "http://localhost:5119/health" -Method GET
+
+# Initialize database if needed
+Invoke-WebRequest -Uri "http://localhost:5119/api/dev/migrate-and-seed" -Method POST
 
 # View backend logs (if running in terminal)
 # Check the terminal where you ran 'dotnet run'
@@ -285,18 +299,42 @@ Invoke-WebRequest -Uri "http://localhost:3000" -Method GET
 - Verify PostgreSQL is running: `docker compose ps`
 - Check connection string in `backend/appsettings.Development.json`
 - Ensure port 5432 is not used by another service
+- **Initialize database if empty**: Use the migration endpoint if you see database-related errors:
+  ```powershell
+  Invoke-WebRequest -Uri "http://localhost:5119/api/dev/migrate-and-seed" -Method POST
+  ```
 
 #### Elasticsearch Issues
 
 - Verify Elasticsearch is running: `Invoke-WebRequest -Uri "http://localhost:9200" -Method GET`
 - Check if port 9200 is available
 - For search issues, ensure you've run the sync command
+- **Sync products to Elasticsearch**:
+  ```powershell
+  Invoke-WebRequest -Uri "http://localhost:5119/api/sync-elastic" -Method POST
+  ```
+
+#### Common Error Messages
+
+**"Table 'products' doesn't exist"**
+
+- Run database migration: `Invoke-WebRequest -Uri "http://localhost:5119/api/dev/migrate-and-seed" -Method POST`
+
+**"Health check failed"**
+
+- Backend might be starting up - wait 30-60 seconds and try again
+- Check if all Docker services are running: `docker compose ps`
+
+**"GraphQL infinite calls"**
+
+- This has been fixed in the current version with proper useCallback dependencies
+- If you see this, ensure you have the latest frontend code
 
 #### Port Conflicts
 
 ```powershell
 # Check what's using specific ports
-netstat -an | findstr :5000
+netstat -an | findstr :5119
 netstat -an | findstr :3000
 netstat -an | findstr :5432
 netstat -an | findstr :9200
@@ -338,10 +376,11 @@ galaxus/
 ## 🚀 Next Steps
 
 1. **Explore the Application**: Visit [http://localhost:3000](http://localhost:3000) to see the product search interface
-2. **Try GraphQL**: Use the GraphQL playground at [http://localhost:5000/graphql](http://localhost:5000/graphql)
+2. **Try GraphQL**: Use the GraphQL playground at [http://localhost:5119/graphql](http://localhost:5119/graphql)
 3. **Run Tests**: Execute the test suites to ensure everything works correctly
-4. **Check Health**: Monitor application health at [http://localhost:5000/health](http://localhost:5000/health)
-5. **Production Deployment**: Follow the [DEPLOYMENT.md](DEPLOYMENT.md) guide for production setup
+4. **Check Health**: Monitor application health at [http://localhost:5119/health](http://localhost:5119/health)
+5. **Initialize Database**: Use `POST http://localhost:5119/api/dev/migrate-and-seed` if database is empty
+6. **Production Deployment**: Follow the [DEPLOYMENT.md](DEPLOYMENT.md) guide for production setup
 
 ---
 
@@ -361,11 +400,20 @@ galaxus/
 3. **Performance Tests**: Validate system performance under load
 4. **Security Tests**: Ensure application security standards
 
+### Git Repository Management
+
+The project uses a single repository structure with both frontend and backend code:
+
+- All source files are properly tracked in git
+- Frontend and backend are separate but integrated applications
+- Database initialization scripts are included
+- Comprehensive documentation and deployment scripts
+
 ---
 
 ## 📚 Additional Resources
 
-- **Backend Documentation**: Explore GraphQL schema at [http://localhost:5000/graphql](http://localhost:5000/graphql)
+- **Backend Documentation**: Explore GraphQL schema at [http://localhost:5119/graphql](http://localhost:5119/graphql)
 - **Production Deployment**: See [DEPLOYMENT.md](DEPLOYMENT.md) for detailed deployment instructions
 - **Testing Guide**: Run `./test.sh` for comprehensive testing (requires bash/WSL)
 - **Docker Services**: All database services are defined in `docker-compose.yml`
