@@ -14,7 +14,7 @@ namespace Backend.Api.GraphQL
   {
     private static readonly string[] ValidCategories =
     {
-      "Electronics", "Fashion", "Home & Kitchen", "Gaming", "Automotive", "Sports", "Books", "Music"
+      "Electronics", "Books", "Automotive", "Furniture", "Garden", "Home Appliances", "Sportswear", "Toys"
     };
 
     private static readonly Regex QuerySanitizationRegex = new(@"[<>""'&]", RegexOptions.Compiled);

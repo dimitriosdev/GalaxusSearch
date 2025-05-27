@@ -191,7 +191,9 @@ export function useProducts({
       const json = await response.json();
 
       if (json.errors && json.errors.length > 0) {
-        const errorMessage = json.errors.map((err: { message: string }) => err.message).join("; ");
+        const errorMessage = json.errors
+          .map((err: { message: string }) => err.message)
+          .join("; ");
         console.error("GraphQL Errors:", json.errors);
         throw new Error(`GraphQL Error: ${errorMessage}`);
       }
@@ -202,7 +204,10 @@ export function useProducts({
       }
 
       if (!json.data.searchProducts) {
-        console.error("Invalid GraphQL response - no searchProducts:", json.data);
+        console.error(
+          "Invalid GraphQL response - no searchProducts:",
+          json.data
+        );
         throw new Error("Invalid response format: missing searchProducts");
       }
 

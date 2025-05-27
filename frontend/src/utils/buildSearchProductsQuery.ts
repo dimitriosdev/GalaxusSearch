@@ -14,7 +14,7 @@ export function buildSearchProductsQuery({
   size = 20, // Changed from 1000 to 20 to match backend default
 }: BuildSearchProductsQueryArgs): string {
   const filters = [];
-  
+
   // Only add non-empty/valid parameters
   if (query && query.trim()) {
     filters.push(`query: "${query.trim()}"`);
@@ -31,7 +31,7 @@ export function buildSearchProductsQuery({
   // Always include size parameter, ensure it's within valid range
   const validSize = Math.max(1, Math.min(1000, size));
   filters.push(`size: ${validSize}`);
-  
+
   return `query {
   searchProducts(${filters.join(", ")}) {
     id
