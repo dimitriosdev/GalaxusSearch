@@ -1,107 +1,373 @@
-# Galaxus Project: Developer Setup Guide
+# Galaxus Product Search: Complete Developer Setup Guide
 
-This guide will help you get the full stack (frontend, backend, PostgreSQL, and Elasticsearch) running locally from scratch.
-
----
-
-## 1. Prerequisites
-
-- [Docker Desktop](https://www.docker.com/products/docker-desktop/) installed and running
-- [.NET 9 SDK](https://dotnet.microsoft.com/en-us/download/dotnet/9.0) installed
-- [Node.js](https://nodejs.org/) (v18+) and npm installed
+This comprehensive guide will help you get the full-stack Galaxus Product Search application running locally from scratch. The application includes a .NET 9 GraphQL API backend, Next.js frontend with Apollo Client, PostgreSQL database, and Elasticsearch for advanced search capabilities.
 
 ---
 
-## 2. Start Database & Search Services
+## 🛠️ Prerequisites
 
-From the project root (`galaxus/`), run:
+Before starting, ensure you have the following installed:
+
+- **[Docker Desktop](https://www.docker.com/products/docker-desktop/)** - For PostgreSQL and Elasticsearch services
+- **[.NET 9 SDK](https://dotnet.microsoft.com/en-us/download/dotnet/9.0)** - For the backend API
+- **[Node.js](https://nodejs.org/) (v18+)** and **npm** - For the frontend application
+- **[Git](https://git-scm.com/)** - For version control
+
+### Verify Prerequisites
+
+Run these commands in PowerShell to verify your setup:
 
 ```powershell
+# Check Docker
+docker --version
+docker compose version
+
+# Check .NET
+dotnet --version
+
+# Check Node.js and npm
+node --version
+npm --version
+
+# Check Git
+git --version
+```
+
+---
+
+## 🚀 Quick Start (5 Steps)
+
+### Step 1: Clone and Navigate to Project
+
+```powershell
+# If you haven't cloned the repository yet
+git clone <repository-url>
+cd galaxus
+```
+
+### Step 2: Start Database & Search Services
+
+From the project root directory:
+
+```powershell
+# Start PostgreSQL and Elasticsearch in background
 docker compose up -d
+
+# Verify services are running
+docker compose ps
 ```
 
 This will start:
 
-- **PostgreSQL** (port 5432, user: `galaxus`, password: `galaxus`, db: `galaxus`)
-- **Elasticsearch** (port 9200)
+- **PostgreSQL** on port 5432 (auto-seeded with 10,000+ products)
+- **Elasticsearch** on port 9200 (for search functionality)
 
-The database will be automatically seeded with 10,000+ products.
+### Step 3: Start the Backend API (.NET)
 
----
-
-## 3. Start the Backend API (.NET)
-
-In a new terminal:
+Open a new PowerShell terminal and run:
 
 ```powershell
+# Navigate to backend directory
 cd backend
-# Restore dependencies
- dotnet restore
-# Run the API
- dotnet run
+
+# Restore NuGet packages
+dotnet restore
+
+# Start the API in development mode
+dotnet run
 ```
 
-The backend will start on [http://localhost:5000](http://localhost:5000) (or as configured).
+The backend will start on [http://localhost:5000](http://localhost:5000) with:
 
----
+- GraphQL endpoint at `/graphql`
+- Health check endpoint at `/health`
+- Swagger documentation (if enabled)
 
-## 4. Start the Frontend (Next.js)
+### Step 4: Start the Frontend (Next.js)
 
-In another terminal:
+Open another PowerShell terminal and run:
 
 ```powershell
+# Navigate to frontend directory
 cd frontend
+
+# Install npm dependencies
 npm install
+
+# Start the development server with Turbopack
 npm run dev
 ```
 
-The frontend will start on [http://localhost:3000](http://localhost:3000).
+The frontend will start on [http://localhost:3000](http://localhost:3000) with:
 
----
+> **Note**: If port 3000 is in use, Next.js will automatically use the next available port (e.g., 3001). Check your terminal output for the actual URL.
 
-## 5. Sync Products to Elasticsearch (for search)
+- Hot reload enabled
+- Turbopack for faster builds
+- TypeScript support
 
-After the backend is running, trigger a sync from PostgreSQL to Elasticsearch:
+### Step 5: Sync Products to Elasticsearch
+
+After the backend is running, enable search functionality:
+
+**Option 1: Using PowerShell's Invoke-WebRequest (recommended)**
 
 ```powershell
-curl -X POST http://localhost:5000/sync-elastic
+Invoke-WebRequest -Uri "http://localhost:5000/sync-elastic" -Method POST
 ```
 
-This will index all products from the database into Elasticsearch for search functionality.
+**Option 2: Using curl.exe directly**
+
+```powershell
+curl.exe -X POST http://localhost:5000/sync-elastic
+```
+
+This indexes all products from PostgreSQL into Elasticsearch for enhanced search capabilities.
 
 ---
 
-## 6. Stopping Services
+## 🧪 Running Tests
 
-To stop the database and Elasticsearch:
+The project includes comprehensive test suites:
+
+### Backend Tests
 
 ```powershell
+cd backend
+# Run all tests
+dotnet test
+
+# Run with coverage
+dotnet test --collect:"XPlat Code Coverage"
+```
+
+### Frontend Tests
+
+```powershell
+cd frontend
+# Run all tests
+npm test
+
+# Run tests in watch mode
+npm run test:watch
+
+# Run with coverage
+npm run test:coverage
+```
+
+### Comprehensive Test Suite
+
+For full system testing (requires bash/WSL on Windows):
+
+```bash
+# Run all tests including integration and performance tests
+./test.sh
+```
+
+---
+
+## 🔧 Development Features
+
+### Backend Features
+
+- **GraphQL API** with HotChocolate
+- **PostgreSQL** with Dapper for data access
+- **Elasticsearch** integration for search
+- **Health checks** and monitoring
+- **Serilog** for structured logging
+- **FluentValidation** for input validation
+- **Polly** for resilience patterns
+
+### Frontend Features
+
+- **Next.js 15** with Turbopack
+- **React 19** with TypeScript
+- **Apollo Client** for GraphQL
+- **Tailwind CSS** for styling
+- **Jest** and Testing Library for testing
+- **ESLint** for code quality
+
+---
+
+## 📋 Available Services & Endpoints
+
+### Frontend
+
+- **Main Application**: [http://localhost:3000](http://localhost:3000)
+- **Product Search**: Real-time search with Apollo Client
+- **Responsive Design**: Mobile-friendly interface
+
+### Backend API
+
+- **Base URL**: [http://localhost:5000](http://localhost:5000)
+- **GraphQL Playground**: [http://localhost:5000/graphql](http://localhost:5000/graphql)
+- **Health Check**: [http://localhost:5000/health](http://localhost:5000/health)
+- **Sync Endpoint**: `POST http://localhost:5000/sync-elastic`
+
+### Database Services
+
+- **PostgreSQL**: `localhost:5432`
+  - Database: `galaxus`
+  - Username: `galaxus`
+  - Password: `galaxus`
+- **Elasticsearch**: [http://localhost:9200](http://localhost:9200)
+  - Cluster health: [http://localhost:9200/\_cluster/health](http://localhost:9200/_cluster/health)
+
+---
+
+## 🛑 Stopping Services
+
+### Stop Application Servers
+
+- Press `Ctrl+C` in the terminals running the backend and frontend
+
+### Stop Database Services
+
+```powershell
+# Stop and remove containers
 docker compose down
+
+# Stop and remove containers + volumes (removes all data)
+docker compose down -v
 ```
 
 ---
 
-## 7. Useful URLs
+## 🔍 Troubleshooting
 
-- Frontend: [http://localhost:3000](http://localhost:3000)
-- Backend API: [http://localhost:5000](http://localhost:5000)
-- PostgreSQL: `localhost:5432` (user: `galaxus`, password: `galaxus`)
-- Elasticsearch: [http://localhost:9200](http://localhost:9200)
+### Common Issues and Solutions
+
+#### Docker Issues
+
+```powershell
+# Check if Docker Desktop is running
+docker --version
+
+# View running containers
+docker compose ps
+
+# View logs for specific service
+docker compose logs postgres
+docker compose logs elasticsearch
+
+# Restart services
+docker compose restart
+```
+
+#### Backend Issues
+
+```powershell
+# Check if backend is running
+Invoke-WebRequest -Uri "http://localhost:5000/health" -Method GET
+
+# View backend logs (if running in terminal)
+# Check the terminal where you ran 'dotnet run'
+
+# Clean and rebuild
+dotnet clean
+dotnet build
+```
+
+#### Frontend Issues
+
+```powershell
+# Clear npm cache and reinstall
+npm cache clean --force
+Remove-Item -Recurse -Force node_modules
+npm install
+
+# Check if frontend is accessible
+Invoke-WebRequest -Uri "http://localhost:3000" -Method GET
+```
+
+#### Database Connection Issues
+
+- Verify PostgreSQL is running: `docker compose ps`
+- Check connection string in `backend/appsettings.Development.json`
+- Ensure port 5432 is not used by another service
+
+#### Elasticsearch Issues
+
+- Verify Elasticsearch is running: `Invoke-WebRequest -Uri "http://localhost:9200" -Method GET`
+- Check if port 9200 is available
+- For search issues, ensure you've run the sync command
+
+#### Port Conflicts
+
+```powershell
+# Check what's using specific ports
+netstat -an | findstr :5000
+netstat -an | findstr :3000
+netstat -an | findstr :5432
+netstat -an | findstr :9200
+```
 
 ---
 
-## 8. Troubleshooting
+## 📁 Project Structure
 
-- Make sure Docker Desktop is running before starting services.
-- If ports are in use, stop other containers or change the ports in `docker-compose.yml`.
-- For database connection errors, check credentials in your backend config.
-- If search does not work, ensure you have run the sync step above.
+```
+galaxus/
+├── backend/                    # .NET 9 Web API
+│   ├── Services/              # Business logic and data access
+│   ├── GraphQL/               # GraphQL schema and resolvers
+│   ├── Models/                # Data models
+│   ├── DTOs/                  # Data transfer objects
+│   ├── Database/              # Migrations and seeds
+│   └── HealthChecks/          # Health monitoring
+├── frontend/                  # Next.js React application
+│   ├── src/app/               # App router pages
+│   ├── src/components/        # React components
+│   ├── src/hooks/             # Custom React hooks
+│   └── pages/                 # Pages router (legacy)
+├── Backend.Tests/             # Backend test suite
+│   ├── Services/              # Service layer tests
+│   ├── GraphQL/               # GraphQL tests
+│   ├── Integration/           # Integration tests
+│   ├── Performance/           # Load tests
+│   └── Security/              # Security tests
+├── docker-compose.yml         # Database and search services
+├── init.sql                   # Database initialization script
+├── test.sh                    # Comprehensive test runner
+├── deploy.sh                  # Deployment script
+└── DEPLOYMENT.md              # Production deployment guide
+```
 
 ---
 
-## 9. Project Structure
+## 🚀 Next Steps
 
-- `backend/` - .NET API
-- `frontend/` - Next.js app
-- `docker-compose.yml` - Service definitions for PostgreSQL and Elasticsearch
-- `init.sql` - Database seed script
+1. **Explore the Application**: Visit [http://localhost:3000](http://localhost:3000) to see the product search interface
+2. **Try GraphQL**: Use the GraphQL playground at [http://localhost:5000/graphql](http://localhost:5000/graphql)
+3. **Run Tests**: Execute the test suites to ensure everything works correctly
+4. **Check Health**: Monitor application health at [http://localhost:5000/health](http://localhost:5000/health)
+5. **Production Deployment**: Follow the [DEPLOYMENT.md](DEPLOYMENT.md) guide for production setup
+
+---
+
+## 🤝 Development Workflow
+
+### Making Changes
+
+1. **Backend Changes**: The API supports hot reload, changes will be reflected immediately
+2. **Frontend Changes**: Next.js with Turbopack provides instant hot reload
+3. **Database Changes**: Update migration files in `backend/Database/Migrations/`
+4. **Search Changes**: Re-run the sync command after database schema changes
+
+### Testing Strategy
+
+1. **Unit Tests**: Test individual components and services
+2. **Integration Tests**: Test API endpoints and database interactions
+3. **Performance Tests**: Validate system performance under load
+4. **Security Tests**: Ensure application security standards
+
+---
+
+## 📚 Additional Resources
+
+- **Backend Documentation**: Explore GraphQL schema at [http://localhost:5000/graphql](http://localhost:5000/graphql)
+- **Production Deployment**: See [DEPLOYMENT.md](DEPLOYMENT.md) for detailed deployment instructions
+- **Testing Guide**: Run `./test.sh` for comprehensive testing (requires bash/WSL)
+- **Docker Services**: All database services are defined in `docker-compose.yml`
+
+For issues or questions, check the troubleshooting section above or review the application logs.
