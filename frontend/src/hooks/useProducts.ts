@@ -34,7 +34,7 @@ export function useProducts({
   category,
   minPrice,
   maxPrice,
-  size = 1000,
+  size = 20, // Changed from 1000 to 20 to match backend default
   enableRetry = true,
   retryAttempts = DEFAULT_RETRY_ATTEMPTS,
   retryDelay = DEFAULT_RETRY_DELAY,
@@ -158,14 +158,20 @@ export function useProducts({
       if (size <= 0 || size > 1000) {
         throw new Error("Size must be between 1 and 1000");
       }
+      if (query && query.trim().length > 100) {
+        throw new Error("Search query cannot exceed 100 characters");
+      }
 
       const queryString = buildSearchProductsQuery({
         query: query.trim() || undefined,
         category: category || undefined,
         minPrice: minPrice ? parseFloat(minPrice) : undefined,
         maxPrice: maxPrice ? parseFloat(maxPrice) : undefined,
-        size,
+        size: Math.max(1, Math.min(1000, size)), // Ensure size is within valid range
       });
+
+      // Log the actual GraphQL query for debugging
+      console.log("GraphQL Query:", queryString);
 
       const response = await measurePerformance(
         "product_search_api_call",
@@ -185,12 +191,19 @@ export function useProducts({
       const json = await response.json();
 
       if (json.errors && json.errors.length > 0) {
-        const errorMessage = json.errors[0].message || "GraphQL query failed";
-        throw new Error(errorMessage);
+        const errorMessage = json.errors.map((err: { message: string }) => err.message).join("; ");
+        console.error("GraphQL Errors:", json.errors);
+        throw new Error(`GraphQL Error: ${errorMessage}`);
       }
 
-      if (!json.data || !json.data.searchProducts) {
-        throw new Error("Invalid response format");
+      if (!json.data) {
+        console.error("Invalid GraphQL response - no data:", json);
+        throw new Error("Invalid response format: missing data");
+      }
+
+      if (!json.data.searchProducts) {
+        console.error("Invalid GraphQL response - no searchProducts:", json.data);
+        throw new Error("Invalid response format: missing searchProducts");
       }
 
       if (isMountedRef.current) {
