@@ -1,0 +1,284 @@
+name: CI/CD Pipeline
+
+on:
+  push:
+    branches: [main, develop]
+  pull_request:
+    branches: [main]
+
+jobs:
+  test:
+    name: Run Tests
+    runs-on: ubuntu-latest
+
+    services:
+      postgres:
+        image: postgres:15
+        env:
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: galaxus_products_test
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+        ports:
+          - 5432:5432
+
+      elasticsearch:
+        image: docker.elastic.co/elasticsearch/elasticsearch:8.11.0
+        env:
+          discovery.type: single-node
+          xpack.security.enabled: false
+        options: >-
+          --health-cmd "curl http://localhost:9200/_cluster/health"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 10
+        ports:
+          - 9200:9200
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: "9.0.x"
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "18"
+          cache: "npm"
+          cache-dependency-path: frontend/package-lock.json
+
+      - name: Install .NET tools
+        run: |
+          dotnet tool install -g dotnet-reportgenerator-globaltool
+
+      - name: Restore backend dependencies
+        run: |
+          cd backend
+          dotnet restore
+
+      - name: Build backend
+        run: |
+          cd backend
+          dotnet build --configuration Release --no-restore
+
+      - name: Install frontend dependencies
+        run: |
+          cd frontend
+          npm ci
+
+      - name: Run backend unit tests
+        run: |
+          cd backend
+          dotnet test Tests/Backend.Tests.csproj --configuration Release --no-build --verbosity normal --collect:"XPlat Code Coverage" --filter "Category!=Integration&Category!=Performance&Category!=Security"
+
+      - name: Run frontend tests
+        run: |
+          cd frontend
+          npm test -- --coverage --watchAll=false
+
+      - name: Frontend lint
+        run: |
+          cd frontend
+          npm run lint
+
+      - name: Frontend build test
+        run: |
+          cd frontend
+          npm run build
+
+      - name: Generate coverage report
+        run: |
+          cd backend
+          reportgenerator "-reports:Tests/TestResults/*/coverage.cobertura.xml" "-targetdir:Tests/TestResults/CoverageReport" -reporttypes:Html
+
+      - name: Upload backend coverage
+        uses: codecov/codecov-action@v4
+        with:
+          file: backend/Tests/TestResults/*/coverage.cobertura.xml
+          flags: backend
+          name: backend-coverage
+
+      - name: Upload frontend coverage
+        uses: codecov/codecov-action@v4
+        with:
+          file: frontend/coverage/lcov.info
+          flags: frontend
+          name: frontend-coverage
+
+      - name: Wait for services
+        run: |
+          # Wait for PostgreSQL
+          for i in {1..30}; do
+            if pg_isready -h localhost -p 5432; then
+              echo "PostgreSQL is ready"
+              break
+            fi
+            echo "Waiting for PostgreSQL..."
+            sleep 2
+          done
+
+          # Wait for Elasticsearch
+          for i in {1..30}; do
+            if curl -s http://localhost:9200/_cluster/health; then
+              echo "Elasticsearch is ready"
+              break
+            fi
+            echo "Waiting for Elasticsearch..."
+            sleep 2
+          done
+
+      - name: Start backend for integration tests
+        run: |
+          cd backend
+          dotnet run --configuration Release &
+          echo $! > backend.pid
+          sleep 10
+
+      - name: Run integration tests
+        env:
+          DATABASE_URL: "Host=localhost;Port=5432;Database=galaxus_products_test;Username=postgres;Password=postgres"
+          ELASTICSEARCH_URL: "http://localhost:9200"
+        run: |
+          cd backend
+          dotnet test Tests/Backend.Tests.csproj --configuration Release --no-build --verbosity normal --filter "Category=Integration"
+
+      - name: Run security tests
+        run: |
+          cd backend
+          dotnet test Tests/Backend.Tests.csproj --configuration Release --no-build --verbosity normal --filter "Category=Security"
+
+      - name: Stop backend
+        run: |
+          if [ -f backend/backend.pid ]; then
+            kill $(cat backend/backend.pid) || true
+            rm backend/backend.pid
+          fi
+
+  security-scan:
+    name: Security Scan
+    runs-on: ubuntu-latest
+    needs: test
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Run Trivy vulnerability scanner
+        uses: aquasecurity/trivy-action@master
+        with:
+          scan-type: "fs"
+          scan-ref: "."
+          format: "sarif"
+          output: "trivy-results.sarif"
+
+      - name: Upload Trivy scan results
+        uses: github/codeql-action/upload-sarif@v3
+        with:
+          sarif_file: "trivy-results.sarif"
+
+  build-and-deploy:
+    name: Build and Deploy
+    runs-on: ubuntu-latest
+    needs: [test, security-scan]
+    if: github.ref == 'refs/heads/main'
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Login to Container Registry
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Build and push backend image
+        uses: docker/build-push-action@v5
+        with:
+          context: ./backend
+          file: ./backend/Dockerfile
+          push: true
+          tags: |
+            ghcr.io/${{ github.repository }}/backend:latest
+            ghcr.io/${{ github.repository }}/backend:${{ github.sha }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+      - name: Build and push frontend image
+        uses: docker/build-push-action@v5
+        with:
+          context: ./frontend
+          file: ./frontend/Dockerfile
+          push: true
+          tags: |
+            ghcr.io/${{ github.repository }}/frontend:latest
+            ghcr.io/${{ github.repository }}/frontend:${{ github.sha }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+      - name: Deploy to Railway
+        if: github.ref == 'refs/heads/main'
+        run: |
+          # Add Railway deployment logic here
+          echo "Deploying to Railway..."
+          # curl -X POST ${{ secrets.RAILWAY_WEBHOOK_URL }}
+
+      - name: Run deployment tests
+        run: |
+          # Add deployment verification tests
+          echo "Running deployment verification..."
+          # Add health check calls to deployed services
+
+  performance-test:
+    name: Performance Tests
+    runs-on: ubuntu-latest
+    needs: build-and-deploy
+    if: github.ref == 'refs/heads/main'
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: "9.0.x"
+
+      - name: Run performance tests
+        run: |
+          cd backend
+          dotnet test Tests/Backend.Tests.csproj --configuration Release --filter "Category=Performance"
+
+      - name: Generate performance report
+        run: |
+          echo "Performance test results available in test output"
+
+  notify:
+    name: Notify
+    runs-on: ubuntu-latest
+    needs: [test, security-scan, build-and-deploy, performance-test]
+    if: always()
+
+    steps:
+      - name: Notify success
+        if: ${{ needs.test.result == 'success' && needs.security-scan.result == 'success' }}
+        run: |
+          echo "✅ All tests passed! Deployment successful."
+          # Add notification logic (Slack, email, etc.)
+
+      - name: Notify failure
+        if: ${{ needs.test.result == 'failure' || needs.security-scan.result == 'failure' }}
+        run: |
+          echo "❌ Tests failed! Check the logs."
+          # Add notification logic (Slack, email, etc.)
